@@ -18,6 +18,7 @@ class TestDistributedParallelDataPipe(_TestDistributedDataPipe):
             "parallel-C",
             "parallel-D",
             "parallel-E",
+            "parallel-non-dist",
         ]
     )
     def sample_data_pipe(self, request):
@@ -71,6 +72,19 @@ class TestDistributedParallelDataPipe(_TestDistributedDataPipe):
         if request.param == "parallel-E":
             return DistributedParallelDataPipe(
                 [p1, DistributedParallelDataPipe([p2, p3])]
+            )
+        if request.param == "parallel-non-dist":
+            return DataPipe(
+                [
+                    p1,
+                    DistributedParallelDataPipe(
+                        [
+                            DistributedDataPipe([p2]),
+                            DistributedDataPipe([p3]),
+                        ],
+                        num_proc_per_pipe=1,
+                    ),
+                ]
             )
 
         raise ValueError(request.param)

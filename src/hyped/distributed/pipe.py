@@ -345,7 +345,9 @@ class DistributedDataPipe(DataPipe):
             raise RuntimeError(
                 "Actor Pool of `DistributedDataPipe` not initialized. "
                 "This might occur when a standard a `DistributedDataPipe` "
-                "is nested in a standard `DataPipe`."
+                "is nested in a standard `DataPipe`. Fix this error by "
+                "specifying the `num_proc` argument in the constructor of"
+                "the distributed data pipe."
             )
 
         with self._pool.reserve() as (_, actor):

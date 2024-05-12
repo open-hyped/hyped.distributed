@@ -177,7 +177,7 @@ class ActorPool(object):
         """
         # get idleing actor rank from queue and
         # the corresponsing actor
-        rank = self.idle_ranks.get(**kwargs)
+        rank = self.idle_ranks.get(block=block, timeout=timeout)
         actor = self.actors[rank]
         # return rank and actor
         return _ReservedActor(self, rank, actor)

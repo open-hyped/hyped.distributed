@@ -20,6 +20,8 @@ class TestDistributedDataPipe(object):
     @pytest.fixture(
         params=[
             "flat",
+            "nest-dist-normal",
+            "nest-normal-dist",
             "stacked",
             "stacked-1-1-1",
             "stacked-1-3-5",
@@ -40,6 +42,10 @@ class TestDistributedDataPipe(object):
         # create data pipe
         if request.param == "flat":
             return DistributedDataPipe([p1, p2, p3])
+        if request.param == "nest-dist-normal":
+            return DistributedDataPipe([DataPipe([p1, p2, p3])], num_proc=1)
+        if request.param == "nest-normal-dist":
+            return DataPipe([DistributedDataPipe([p1, p2, p3], num_proc=1)])
         if request.param == "stacked":
             return DistributedDataPipe(
                 [
@@ -89,15 +95,13 @@ class TestDistributedDataPipe(object):
 
         raise ValueError(request.param)
 
-    def test_error_on_false_nested(self):
-        with pytest.raises(
-            RuntimeError,
-            match="Cannot nest distributed components in a non-distributed ",
-        ):
-            DataPipe([DistributedDataPipe([])]).apply(data=None)
-
     def test_preparation_logic(self, sample_data_pipe):
-        sample_data_pipe._spawn_pool(num_actors=1)
+        if (
+            isinstance(sample_data_pipe, DistributedDataPipe)
+            and not sample_data_pipe.is_pool_ready
+        ):
+            sample_data_pipe._spawn_pool(num_actors=1)
+
         assert not sample_data_pipe.is_prepared
 
         # create different input features
@@ -108,20 +112,25 @@ class TestDistributedDataPipe(object):
         sample_data_pipe.prepare(x)
         assert sample_data_pipe.is_prepared
 
-        # get processor from pipe
-        p2 = sample_data_pipe[1]
-        # prepare any processor with Y
-        # this should break the feature pipe
-        p2.prepare(y)
-        assert p2.is_prepared
-        assert not sample_data_pipe.is_prepared
+        if len(sample_data_pipe) > 1:
+            # get processor from pipe
+            p2 = sample_data_pipe[1]
+            # prepare any processor with Y
+            # this should break the feature pipe
+            p2.prepare(y)
+            assert p2.is_prepared
+            assert not sample_data_pipe.is_prepared
 
-        # preparing the pipe again should fix the issue
-        sample_data_pipe.prepare(x)
-        assert sample_data_pipe.is_prepared
+            # preparing the pipe again should fix the issue
+            sample_data_pipe.prepare(x)
+            assert sample_data_pipe.is_prepared
 
     def test_feature_management(self, sample_data_pipe):
-        sample_data_pipe._spawn_pool(num_actors=1)
+        if (
+            isinstance(sample_data_pipe, DistributedDataPipe)
+            and not sample_data_pipe.is_pool_ready
+        ):
+            sample_data_pipe._spawn_pool(num_actors=1)
         # create input and expected output features
         x = datasets.Features({"X": datasets.Value("int32")})
         y = datasets.Features({k: datasets.Value("string") for k in "ABC"})
@@ -135,7 +144,11 @@ class TestDistributedDataPipe(object):
         assert sample_data_pipe.out_features == datasets.Features(x | y)
 
     def test_batch_processing(self, sample_data_pipe):
-        sample_data_pipe._spawn_pool(num_actors=1)
+        if (
+            isinstance(sample_data_pipe, DistributedDataPipe)
+            and not sample_data_pipe.is_pool_ready
+        ):
+            sample_data_pipe._spawn_pool(num_actors=1)
         # create input batch and corresponding features
         x = datasets.Features({"X": datasets.Value("int32")})
         batch = {"X": ["example %i" % i for i in range(10)]}
@@ -192,7 +205,10 @@ class TestDistributedDataPipe(object):
             {"X": ["example %i" % i for i in range(100)]}
         ).to_iterable_dataset(num_shards=num_shards)
         # apply
-        ds = sample_data_pipe.apply(ds, batch_size=10, unordered=False)
+        if isinstance(sample_data_pipe, DistributedDataPipe):
+            ds = sample_data_pipe.apply(ds, batch_size=10, unordered=False)
+        else:
+            ds = sample_data_pipe.apply(ds, batch_size=10)
         ds = datasets.Dataset.from_generator(
             lambda: (yield from ds), features=ds.features
         )
@@ -214,7 +230,10 @@ class TestDistributedDataPipe(object):
         ).to_iterable_dataset(num_shards=num_shards)
         ds = datasets.IterableDatasetDict({"train": ds})
         # apply
-        ds = sample_data_pipe.apply(ds, batch_size=10, unordered=False)
+        if isinstance(sample_data_pipe, DistributedDataPipe):
+            ds = sample_data_pipe.apply(ds, batch_size=10, unordered=False)
+        else:
+            ds = sample_data_pipe.apply(ds, batch_size=10)
         ds = datasets.Dataset.from_generator(
             lambda: (yield from ds["train"]), features=ds["train"].features
         )
