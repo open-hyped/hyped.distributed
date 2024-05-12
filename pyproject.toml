@@ -1,0 +1,78 @@
+[project]
+name = "hyped-distributed"
+dynamic = ["version"]
+description = "TODO"
+readme = "README.md"
+classifiers = [
+    "License :: Freely Distributable",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+]
+authors = [
+    {name = "Niclas Doll"},
+]
+requires-python = ">=3.10,<3.12"
+license = {text = "Apache 2.0"}
+dependencies = [
+    "hyped",
+    "ray>=2.10.0"
+]
+
+[project.optional-dependencies]
+linting = ["pre-commit"]
+tests = ["pytest", "pytest-cov"]
+
+[build-system]
+requires = ["setuptools >= 61.0.0", "setuptools_scm>=8.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.coverage.run]
+concurrency = ["multiprocessing"]
+parallel = true
+sigterm = true
+
+[tool.coverage.report]
+ignore_errors = true
+omit = ["tests/*", "src/hyped/__version__.py"]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.setuptools_scm]
+version_file = "src/hyped/distributed/__version__.py"
+
+[tool.black]
+target-version = ["py311"]
+line-length = 79
+docstring-style = "google"
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
+[tool.ruff]
+line-length = 79
+# check docstrings
+select = ["D"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.per-file-ignores]
+# Don't check docstrings of `tests` and `docs`
+"tests/**" = ["D"]
+"docs/**" = ["D"]
