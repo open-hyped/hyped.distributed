@@ -1,2 +1,2 @@
 """hyped.distributed."""
-from hyped.serve.__version__ import __version__, __version_tuple__
+from hyped.distributed.__version__ import __version__, __version_tuple__
